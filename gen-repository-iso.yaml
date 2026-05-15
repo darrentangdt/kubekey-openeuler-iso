@@ -1,4 +1,3 @@
----
 name: GenRepositoryISO
 on:
   push:
@@ -10,7 +9,7 @@ jobs:
   update-tag:
     name: Update iso-latest Tag
     runs-on: ubuntu-latest
-    if: github.repository == 'kubesphere/kubekey' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -34,7 +33,6 @@ jobs:
   build-iso:
     runs-on: ubuntu-latest
     needs: update-tag
-    if: github.repository == 'kubesphere/kubekey'
     strategy:
       fail-fast: false
       matrix:
@@ -95,8 +93,8 @@ jobs:
       - name: Build iso image to local
         uses: docker/build-push-action@v7
         with:
-          context: hack/gen-repository-iso
-          file: hack/gen-repository-iso/${{ matrix.dockerfile }}
+          context: gen-repository-iso
+          file: gen-repository-iso/${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm64
           outputs: type=local,dest=./output
 
@@ -118,61 +116,4 @@ jobs:
             ${{ matrix.name }}.iso.sha256sum.txt
             ${{ matrix.name }}-amd64.iso
             ${{ matrix.name }}-arm64.iso
-          overwrite: true
-
-      - name: Synchronize artifacts to OSS
-        run: |
-          
-          rm -rf qsctl_v2.4.3_linux_amd64.tar.gz
-          wget https://attack-on-titan.gd2.qingstor.com/qsctl/v2.4.3/qsctl_v2.4.3_linux_amd64.tar.gz
-          tar -zxvf qsctl_v2.4.3_linux_amd64.tar.gz
-          rm -rf qsctl_v2.4.3_linux_amd64.tar.gz
-          mv qsctl_v2.4.3_linux_amd64 /usr/local/bin/qsctl
-          echo "access_key_id: ${{secrets.KS_QSCTL_ACCESS_KEY_ID}}" > qsctl-config.yaml
-          echo "secret_access_key: ${{ secrets.KS_QSCTL_SECRET_ACCESS_KEY }}" >> qsctl-config.yaml
-          
-          qsctl -c qsctl-config.yaml cp ${{ matrix.name }}.iso.sha256sum.txt qs://kubekey/github.com/kubesphere/kubekey/releases/download/iso-latest/${{ matrix.name }}.iso.sha256sum.txt
-          qsctl -c qsctl-config.yaml cp ${{ matrix.name }}-amd64.iso qs://kubekey/github.com/kubesphere/kubekey/releases/download/iso-latest/${{ matrix.name }}-amd64.iso
-          qsctl -c qsctl-config.yaml cp ${{ matrix.name }}-arm64.iso qs://kubekey/github.com/kubesphere/kubekey/releases/download/iso-latest/${{ matrix.name }}-arm64.iso
-
-          rm -rf qsctl-config.yaml
-
-
-  build-harbor:
-    runs-on: ubuntu-latest
-    needs: update-tag
-    if: github.repository == 'kubesphere/kubekey'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: iso-latest
-          fetch-depth: 0
-      - shell: bash
-        name: build arm harbor
-        run: |
-          rm -rf qsctl_v2.4.3_linux_amd64.tar.gz
-          wget https://attack-on-titan.gd2.qingstor.com/qsctl/v2.4.3/qsctl_v2.4.3_linux_amd64.tar.gz
-          tar -zxvf qsctl_v2.4.3_linux_amd64.tar.gz
-          rm -rf qsctl_v2.4.3_linux_amd64.tar.gz
-          mv qsctl_v2.4.3_linux_amd64 /usr/local/bin/qsctl
-          echo "access_key_id: ${{secrets.KS_QSCTL_ACCESS_KEY_ID}}" > /usr/local/bin/qsctl-config.yaml
-          echo "secret_access_key: ${{ secrets.KS_QSCTL_SECRET_ACCESS_KEY }}" >> /usr/local/bin/qsctl-config.yaml
-          
-          for d in $(ls config/harbor); do
-            if [ -d "config/harbor/$d" ]; then
-              cd "config/harbor/$d" && make build
-              mv harbor-offline-installer-"$d"-linux-arm64.tgz harbor-offline-installer-"$d".tgz
-              qsctl -c /usr/local/bin/qsctl-config.yaml cp harbor-offline-installer-"$d".tgz qs://kubekey/github.com/kubesphere/kubekey/releases/download/iso-latest/harbor-offline-installer-"$d".tgz
-            fi
-          done
-
-      - name: Release and upload harbor packages
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: iso-latest
-          name: iso-latest
-          files: config/harbor/*/*harbor-offline-installer*.tgz
           overwrite: true

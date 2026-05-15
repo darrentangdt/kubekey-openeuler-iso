@@ -100,13 +100,33 @@ jobs:
           platforms: linux/amd64,linux/arm64
           outputs: type=local,dest=./output
 
-      - name: Prepare for upload iso
+      - name: Prepare ISO artifacts
         shell: bash
         run: |
           mkdir -p iso
           mv ./output/linux_amd64/*.iso iso/${{ matrix.name }}-amd64.iso
           mv ./output/linux_arm64/*.iso iso/${{ matrix.name }}-arm64.iso
           cd iso && sha256sum *.iso > ${{ matrix.name }}.iso.sha256sum.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            iso/${{ matrix.name }}-amd64.iso
+            iso/${{ matrix.name }}-arm64.iso
+            iso/${{ matrix.name }}.iso.sha256sum.txt
+          retention-days: 1
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build-iso
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
 
       - name: Release and upload ISO packages
         uses: softprops/action-gh-release@v2
@@ -115,8 +135,5 @@ jobs:
         with:
           tag_name: iso-latest
           name: iso-latest
-          files: |
-            iso/${{ matrix.name }}.iso.sha256sum.txt
-            iso/${{ matrix.name }}-amd64.iso
-            iso/${{ matrix.name }}-arm64.iso
+          files: artifacts/*
           overwrite: true

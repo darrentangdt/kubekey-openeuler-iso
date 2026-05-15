@@ -1,0 +1,34 @@
+FROM quay.io/openeuler/openeuler:22.03-lts-sp4 AS openeuler2203sp4
+
+ARG TARGETARCH
+ARG DIR=openeuler-22.03-sp4-${TARGETARCH}-rpms
+ARG PKGS=".common[],.rpms[]"
+ARG BUILD_TOOLS="createrepo_c genisoimage"
+
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+
+RUN sed -i 's/gpgcheck=1/gpgcheck=0/g' /etc/yum.repos.d/openEuler.repo \
+    && dnf clean all \
+    && dnf makecache \
+    && dnf install -y ${BUILD_TOOLS} \
+    && dnf clean all
+
+WORKDIR /package
+
+COPY packages.yaml .
+COPY --from=mikefarah/yq:4.11.1 /usr/bin/yq /usr/bin/yq
+
+RUN mkdir -p ${DIR} \
+    && yq eval "${PKGS}" packages.yaml | while read pkg; do \
+         if [ -n "$pkg" ]; then \
+             echo "Downloading $pkg..."; \
+             dnf download --resolve --destdir=${DIR} $pkg || echo "not found: $pkg"; \
+         fi; \
+    done
+
+RUN createrepo_c ${DIR} \
+    && genisoimage -r -o ${DIR}.iso ${DIR}
+
+FROM scratch
+COPY --from=openeuler2203sp4 /package/*.iso /

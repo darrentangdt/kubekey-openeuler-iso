@@ -101,9 +101,10 @@ jobs:
       - name: Prepare for upload iso
         shell: bash
         run: |
-          mv ./output/linux_amd64/*.iso ${{ matrix.name }}-amd64.iso
-          mv ./output/linux_arm64/*.iso ${{ matrix.name }}-arm64.iso
-          sha256sum *.iso >  ${{ matrix.name }}.iso.sha256sum.txt
+          mkdir -p iso
+          mv ./output/linux_amd64/*.iso iso/${{ matrix.name }}-amd64.iso
+          mv ./output/linux_arm64/*.iso iso/${{ matrix.name }}-arm64.iso
+          cd iso && sha256sum *.iso > ${{ matrix.name }}.iso.sha256sum.txt
 
       - name: Release and upload ISO packages
         uses: softprops/action-gh-release@v2
@@ -113,7 +114,7 @@ jobs:
           tag_name: iso-latest
           name: iso-latest
           files: |
-            ${{ matrix.name }}.iso.sha256sum.txt
-            ${{ matrix.name }}-amd64.iso
-            ${{ matrix.name }}-arm64.iso
+            iso/${{ matrix.name }}.iso.sha256sum.txt
+            iso/${{ matrix.name }}-amd64.iso
+            iso/${{ matrix.name }}-arm64.iso
           overwrite: true

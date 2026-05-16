@@ -70,6 +70,8 @@ jobs:
 
       - name: Build iso image to local
         uses: docker/build-push-action@v7
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
         with:
           context: gen-repository-iso
           file: gen-repository-iso/${{ matrix.dockerfile }}
@@ -103,7 +105,6 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
-          pattern: "*"
 
       - name: Release and upload ISO packages
         uses: softprops/action-gh-release@v2

@@ -1,6 +1,7 @@
 # kubekey-openeuler-iso
 
-本仓库用于通过 GitHub Actions 自动构建各操作系统（openEuler、AlmaLinux、CentOS、Kylin、Ubuntu、Debian 等）的离线依赖包 ISO 镜像。这些离线包主要用于 [KubeKey](https://github.com/kubesphere/kubekey) 部署 Kubernetes 集群时，为无法连接公网的内网环境提供预下载的 RPM/DEB 包。
+本仓库用于通过 GitHub Actions 自动构建openEuler操作系统的离线依赖包 ISO 镜像。这些离线包主要用于 [KubeKey](https://github.com/kubesphere/kubekey) 部署 Kubernetes 集群时，为无法连接公网的内网环境提供预下载的 RPM包。 
+其他操作系统的离线依赖ISO镜像请至[KubeKey release](https://github.com/kubesphere/kubekey/releases/tag/iso-latest).
 
 ## 产物下载
 
@@ -31,127 +32,27 @@
 ---
 
 ## ISO 文件使用说明
+由于kk在openEuler中部署时，仅识别大版本好，比如22.03，24.03，并不关心其sp1、sp2等不同版本号，所以你需要将下载的iso名称中的“lts-sp1-rpms-”删除，重命名为：openEuler-22.03-arm64.iso 或 openEuler-22.03-amd64.iso 这样的文件名。
 
-### 挂载 ISO
-
-```bash
-# 创建挂载点
-mkdir -p /mnt/iso
-
-# 挂载 ISO 文件
-mount -o loop openEuler-XX.XX-xxx.iso /mnt/iso
-
-# 查看包列表
-ls -la /mnt/iso/
-```
-
-### 配置本地 YUM 源（以 openEuler 为例）
-
-挂载后，ISO 中已包含 `repodata/` 元数据，可直接配置为本地 YUM 源使用：
-
-```bash
-# 备份原有 repo 配置
-cp /etc/yum.repos.d/backup/ /etc/yum.repos.d/
-rm -f /etc/yum.repos.d/*.repo
-
-# 添加本地 ISO 源
-cat > /etc/yum.repos.d/local-iso.repo << EOF
-[local-iso]
-name=Local ISO Repository
-baseurl=file:///mnt/iso
-enabled=1
-gpgcheck=0
-EOF
-
-# 清理缓存并使用
-yum clean all
-yum makecache
-```
 
 ### 在 KubeKey 中使用
 
-在 KubeKey 配置文件 `config-sample.yaml` 中，可指定离线包来源：
-
-```yaml
-spec:
-  hosts:
-    - {name: node1, address: 192.168.0.1, internalAddress: 192.168.0.1, arch: amd64}
-  registry:
-    registryMirrors: [ ]
-    insecureRegistries: [ ]
-  addons: [ ]
-```
-
-将 ISO 挂载到节点上并配置好本地源后，KubeKey 部署过程中会优先使用本地仓库中的依赖包。
-
----
-
-## 项目结构
-
-```
-.
-├── .github/workflows/
-│   └── gen-repository-iso.yaml     # GitHub Actions 工作流定义
-├── gen-repository-iso/
-│   ├── dockerfile.openeuler*       # openEuler 各版本的 Dockerfile (8 个)
-│   ├── dockerfile.kylin*           # 银河麒麟各版本
-│   ├── dockerfile.almalinux*       # AlmaLinux
-│   ├── dockerfile.centos*          # CentOS
-│   ├── dockerfile.debian*          # Debian
-│   ├── dockerfile.ubuntu*          # Ubuntu
-│   ├── packages.yaml               # 公共包列表定义
-│   └── download-pkgs.sh            # DEB 系包下载脚本
-├── script/                         # 手动构建参考脚本（已集成到主工作流）
-│   ├── Dockerfile.*
-│   ├── gen-openeuler-iso.sh
-│   └── README
-├── iso/
-│   └── README.md                   # 构建产物输出目录
-└── README.md                       # 本文件
-```
-
----
-
-## 手动触发工作流
-
-除了通过推送 `iso-latest` 标签自动触发外，也可以手动触发：
-
-1. 进入仓库 **Actions** → **GenRepositoryISO**
-2. 点击 **Run workflow** → 选择分支 → 点击 **Run workflow**
-
-### 通过命令行触发
-
+kk自动部署时，会在如下目录寻找对应系统版本的iso
 ```bash
-# 删除并重新创建 iso-latest 标签来触发构建
-git tag -d iso-latest
-git push origin :refs/tags/iso-latest
-git tag iso-latest
-git push origin iso-latest
+# openEuler 22.03 arm64（aarch64） 架构
+kubekey/repository/arm64/openEuler/22.03/openEuler-22.03-arm64.iso
+
+# openEuler 22.03 amd64（x86_64） 架构
+kubekey/repository/amd64/openEuler/22.03/openEuler-22.03-amd64.iso
 ```
+请提前将对应你操作系统版本的iso文件下载并放入对应目录中。
 
 ---
 
-## 本地手动构建（参考）
-
-如果需要在本地测试或构建单个 ISO：
-
-```bash
-# 以 openEuler 22.03 LTS 为例
-cd gen-repository-iso
-
-# 构建 Docker 镜像
-docker build -f dockerfile.openeuler2203 -t iso-builder:openeuler2203 .
-
-# 运行并导出 ISO
-docker run --rm -v $(pwd)/../iso:/output iso-builder:openeuler2203
-cp /output/*.iso ./
-```
-
----
 
 ## 包列表
 
-各操作系统共用的包列表定义在 [`gen-repository-iso/packages.yaml`](./gen-repository-iso/packages.yaml) 中：
+各操作系统共用的包列表定义在 [`gen-repository-iso/packages.yaml`](./gen-repository-iso/packages.yaml) 中，此文件从[Kubekey](https://github.com/kubesphere/kubekey)仓库中提取：
 
 - `common`：所有系统共用的基础包（bash-completion, chrony, conntrack, curl, git, haproxy, ipvsadm, keepalived, lvm2 等）
 - `rpms`：RPM 系额外包（bind-utils, conntrack-tools, nfs-utils, nss 等）

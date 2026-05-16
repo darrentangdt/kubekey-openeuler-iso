@@ -3,7 +3,7 @@ FROM quay.io/openeuler/openeuler:24.03-lts-sp2 AS openeuler2403sp2
 ARG TARGETARCH
 ARG DIR=openeuler-24.03-sp2-${TARGETARCH}-rpms
 ARG PKGS=".common[],.rpms[]"
-ARG BUILD_TOOLS="createrepo_c genisoimage"
+ARG BUILD_TOOLS="createrepo_c genisoimage dnf-utils"
 
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8

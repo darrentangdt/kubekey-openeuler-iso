@@ -127,6 +127,7 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+          pattern: "*"
 
       - name: Release and upload ISO packages
         uses: softprops/action-gh-release@v2
@@ -135,5 +136,5 @@ jobs:
         with:
           tag_name: iso-latest
           name: iso-latest
-          files: artifacts/*
+          files: artifacts/**
           overwrite: true

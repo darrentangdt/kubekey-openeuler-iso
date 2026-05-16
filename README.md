@@ -32,7 +32,7 @@
 ---
 
 ## ISO 文件使用说明
-由于kk在openEuler中部署时，仅识别大版本好，比如22.03，24.03，并不关心其sp1、sp2等不同版本号，所以你需要将下载的iso名称中的“lts-sp1-rpms-”删除，重命名为：openEuler-22.03-arm64.iso 或 openEuler-22.03-amd64.iso 这样的文件名。
+由于kk在openEuler中部署时，仅识别大版本号，比如22.03，24.03，并不关心其sp1、sp2等不同版本号，所以你需要将下载的iso名称中的“lts-sp1-rpms-”删除，重命名为：openEuler-22.03-arm64.iso 或 openEuler-22.03-amd64.iso 这样的文件名。
 
 
 ### 在 KubeKey 中使用
